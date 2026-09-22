@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>登录 - 智慧农业精准灌溉系统</title>
+    <link href="https://cdn.bootcdn.net/ajax/libs/bootstrap/5.1.3/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body {
+            min-height: 100vh;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: "Segoe UI", "Microsoft YaHei", Tahoma, sans-serif;
+            padding: 20px;
+        }
+
+        .login-box {
+            background: #fff;
+            border-radius: 18px;
+            box-shadow: 0 18px 45px rgba(0, 0, 0, .22);
+            width: 100%;
+            max-width: 420px;
+            padding: 36px 34px;
+        }
+
+        .logo {
+            text-align: center;
+            margin-bottom: 18px;
+        }
+
+        .logo i {
+            font-size: 46px;
+            color: #667eea;
+        }
+
+        .login-box h2 {
+            text-align: center;
+            font-size: 21px;
+            font-weight: 600;
+            color: #1f2937;
+            margin: 12px 0 6px;
+        }
+
+        .login-box .sub {
+            text-align: center;
+            color: #6b7280;
+            font-size: 13px;
+            margin-bottom: 24px;
+        }
+
+        .form-label {
+            font-size: 13px;
+            font-weight: 500;
+            color: #374151;
+        }
+
+        .form-control {
+            border-radius: 9px;
+            padding: 11px 13px;
+            border: 1px solid #e5e7eb;
+            font-size: 14px;
+        }
+
+        .form-control:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, .16);
+        }
+
+        .btn-login {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            color: #fff;
+            padding: 12px;
+            border-radius: 9px;
+            font-weight: 600;
+            width: 100%;
+            font-size: 15px;
+            transition: transform .2s, box-shadow .2s;
+        }
+
+        .btn-login:not(:disabled):hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 18px rgba(102, 126, 234, .4);
+        }
+
+        .btn-login:disabled {
+            opacity: .7;
+        }
+
+        .accounts {
+            background: #f9fafb;
+            border-radius: 10px;
+            padding: 14px 16px;
+            margin-top: 22px;
+            font-size: 13px;
+        }
+
+        .accounts .title {
+            color: #667eea;
+            font-weight: 600;
+            margin-bottom: 7px;
+        }
+
+        .acct-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 4px 0;
+            color: #4b5563;
+        }
+
+        .acct-row code {
+            color: #4338ca;
+            background: rgba(102, 126, 234, .1);
+            padding: 1px 6px;
+            border-radius: 4px;
+        }
+
+        .acct-fill {
+            border: 1px solid #e5e7eb;
+            background: #fff;
+            color: #4b5563;
+            font-size: 12px;
+            border-radius: 6px;
+            padding: 2px 9px;
+            cursor: pointer;
+        }
+
+        .acct-fill:hover {
+            border-color: #667eea;
+            color: #667eea;
+        }
+
+        .alert-box {
+            display: none;
+            border-radius: 9px;
+            padding: 10px 14px;
+            font-size: 13.5px;
+            margin-bottom: 16px;
+        }
+
+        .alert-box.show {
+            display: block;
+        }
+
+        .alert-box.error {
+            background: rgba(239, 68, 68, .09);
+            color: #b91c1c;
+        }
+
+        .alert-box.ok {
+            background: rgba(16, 185, 129, .1);
+            color: #065f46;
+        }
+    </style>
+</head>
+<body>
+<div class="login-box">
+    <div class="logo"><i class="fas fa-seedling"></i></div>
+    <h2>智慧农业精准灌溉系统</h2>
+    <p class="sub">土壤湿度监测 · 自动灌溉 · 告警通知 · 水肥一体化</p>
+
+    <div class="alert-box" id="alertBox"></div>
+
+    <form id="loginForm" autocomplete="off">
+        <div class="mb-3">
+            <label class="form-label" for="username">用户名</label>
+            <input type="text" class="form-control" id="username" placeholder="请输入用户名" required>
+        </div>
+        <div class="mb-3">
+            <label class="form-label" for="password">密码</label>
+            <input type="password" class="form-control" id="password" placeholder="请输入密码" required>
+        </div>
+        <button type="submit" class="btn-login" id="loginBtn">
+            <i class="fas fa-right-to-bracket me-1"></i> 登录系统
+        </button>
+    </form>
+
+    <div class="accounts">
+        <div class="title"><i class="fas fa-circle-info me-1"></i> 演示账号（点击即可填入）</div>
+        <div class="acct-row">
+            <span>管理员后台 <code>admin / 123456</code></span>
+            <button type="button" class="acct-fill" data-u="admin" data-p="123456">填入</button>
+        </div>
+        <div class="acct-row">
+            <span>农户操作端 <code>farmer1 / 123456</code></span>
+            <button type="button" class="acct-fill" data-u="farmer1" data-p="123456">填入</button>
+        </div>
+        <div class="acct-row">
+            <span>农户操作端 <code>farmer2 / 123456</code></span>
+            <button type="button" class="acct-fill" data-u="farmer2" data-p="123456">填入</button>
+        </div>
+        <div style="color:#9ca3af;font-size:12px;margin-top:8px;">
+            登录后系统按角色自动进入：管理员 → 管理后台，农户 → 农户操作端
+        </div>
+    </div>
+</div>
+
+<script src="js/common.js"></script>
+<script>
+    const alertBox = document.getElementById('alertBox');
+
+    function showAlert(message, kind) {
+        alertBox.textContent = message;
+        alertBox.className = 'alert-box show ' + (kind || 'error');
+    }
+
+    function hideAlert() {
+        alertBox.className = 'alert-box';
+    }
+
+    document.querySelectorAll('.acct-fill').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            document.getElementById('username').value = this.dataset.u;
+            document.getElementById('password').value = this.dataset.p;
+            hideAlert();
+        });
+    });
+
+    document.getElementById('loginForm').addEventListener('submit', async function (e) {
+        e.preventDefault();
+
+        const username = document.getElementById('username').value.trim();
+        const password = document.getElementById('password').value;
+        const btn = document.getElementById('loginBtn');
+        const original = btn.innerHTML;
+
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> 登录中...';
+        hideAlert();
+
+        try {
+            const result = await App.post('/api/login', { username: username, password: password });
+            App.setUser(result.data);
+            showAlert('登录成功，正在进入' + (result.data.role === 'admin' ? '管理后台' : '农户操作端') + '...', 'ok');
+            // 后端按角色返回 home 地址
+            window.location.href = result.data.home || '/index.html';
+        } catch (err) {
+            showAlert(err.message);
+            btn.disabled = false;
+            btn.innerHTML = original;
+        }
+    });
+
+    // 已登录用户直接跳转到对应工作台，避免重复登录
+    (async function redirectIfLoggedIn() {
+        try {
+            const r = await App.get('/api/user/info');
+            if (r.success && r.data) {
+                window.location.href = r.data.home;
+            }
+        } catch (e) {
+            /* 未登录，停留在登录页 */
+        }
+    })();
+</script>
+</body>
+</html>

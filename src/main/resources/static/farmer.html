@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>农户操作端 - 智慧农业精准灌溉系统</title>
+    <link href="https://cdn.bootcdn.net/ajax/libs/bootstrap/5.1.3/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="css/app.css">
+    <script src="https://cdn.bootcdn.net/ajax/libs/Chart.js/3.7.0/chart.min.js"></script>
+</head>
+<body>
+
+<!-- ============ 侧边栏 ============ -->
+<aside class="sidebar">
+    <div class="sidebar-header">
+        <h4><i class="fas fa-seedling"></i> <span>农户操作端</span></h4>
+        <p>智慧农业精准灌溉系统</p>
+    </div>
+
+    <nav class="sidebar-nav">
+        <a class="nav-item active" data-view="dashboard">
+            <i class="fas fa-gauge-high"></i><span>实时监测看板</span>
+        </a>
+        <a class="nav-item" data-view="irrigation">
+            <i class="fas fa-droplet"></i><span>灌溉管理</span>
+        </a>
+        <a class="nav-item" data-view="alarms">
+            <i class="fas fa-bell"></i><span>告警消息</span>
+            <span class="nav-badge hidden" id="navAlarmBadge">0</span>
+        </a>
+        <a class="nav-item" data-view="devices">
+            <i class="fas fa-microchip"></i><span>我的设备</span>
+        </a>
+        <a class="nav-item" data-view="stats">
+            <i class="fas fa-chart-line"></i><span>历史统计</span>
+        </a>
+        <a class="nav-item" data-view="fertilizer">
+            <i class="fas fa-flask"></i><span>水肥配比</span>
+        </a>
+        <a class="nav-item" data-view="profile">
+            <i class="fas fa-user-gear"></i><span>个人设置</span>
+        </a>
+    </nav>
+
+    <div class="sidebar-footer">
+        <div class="d-flex align-items-center gap-2">
+            <i class="fas fa-circle-user fa-2x"></i>
+            <div class="txt">
+                <div class="user-name" id="sideUserName">--</div>
+                <div class="user-role">农户</div>
+            </div>
+        </div>
+        <button class="btn btn-outline btn-sm w-100 mt-2" onclick="App.logout()">
+            <i class="fas fa-right-from-bracket me-1"></i>退出登录
+        </button>
+    </div>
+</aside>
+
+<!-- ============ 主区域 ============ -->
+<div class="main">
+    <header class="topbar">
+        <h3 id="pageTitle">实时监测看板</h3>
+        <div class="topbar-right">
+            <!-- 告警铃铛：仅高等级告警会触发推送 -->
+            <div class="bell" id="bellBtn" title="告警消息">
+                <i class="fas fa-bell"></i>
+                <span class="bell-dot hidden" id="bellDot">0</span>
+            </div>
+            <span class="muted small" id="clock">--</span>
+            <span class="muted small">
+                <i class="fas fa-user me-1"></i><span id="topUserName">--</span>
+            </span>
+        </div>
+    </header>
+
+    <main class="content">
+
+        <!-- ============ 1. 实时监测看板 ============ -->
+        <section class="view active" id="view-dashboard">
+            <div class="notice notice-info">
+                <i class="fas fa-circle-info" style="margin-top:2px"></i>
+                <div>选择地块后查看实时监测数据。土壤湿度是核心监测指标，系统按管理员配置的阈值自动分级告警：
+                    <b>高等级</b>故障会推送通知，<b>普通</b>数据异常仅在告警消息中留痕。</div>
+            </div>
+
+            <div class="card-box">
+                <div class="flex-between mb-2">
+                    <div>
+                        <h5>我的地块</h5>
+                        <div class="sub mb-0">点击卡片切换当前监测地块</div>
+                    </div>
+                    <button class="btn btn-outline btn-sm" onclick="Farmer.reloadPlots()">
+                        <i class="fas fa-rotate me-1"></i>刷新
+                    </button>
+                </div>
+                <div class="plot-list" id="plotList"></div>
+            </div>
+
+            <div class="row-2">
+                <div>
+                    <div class="card-box">
+                        <div class="flex-between mb-2">
+                            <div>
+                                <h5>实时监测数据<span class="muted small" id="currentPlotName"></span></h5>
+                                <div class="sub mb-0" id="dataFreshness">--</div>
+                            </div>
+                            <div class="btn-row">
+                                <button class="btn btn-outline btn-sm" onclick="Farmer.refreshSensor()">
+                                    <i class="fas fa-rotate me-1"></i>刷新数据
+                                </button>
+                                <button class="btn btn-outline btn-sm" onclick="Farmer.mockData()" title="演示用：生成一条模拟采集数据">
+                                    <i class="fas fa-bolt me-1"></i>模拟采集
+                                </button>
+                            </div>
+                        </div>
+                        <div class="sensor-grid" id="sensorTiles"></div>
+                        <div class="notice notice-warn mt-3 mb-0" id="sensorNotice" style="display:none"></div>
+                    </div>
+
+                    <div class="card-box">
+                        <h5>环境趋势</h5>
+                        <div class="sub">最近 24 小时监测曲线</div>
+                        <div class="chart-box" id="trendWrap">
+                            <canvas id="trendChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="card-box">
+                        <h5>地块状态</h5>
+                        <div class="sub">当前灌溉模式与设备概况</div>
+                        <div id="plotStatusBox" class="muted small">请先选择地块</div>
+                    </div>
+
+                    <div class="card-box">
+                        <h5>最近灌溉记录</h5>
+                        <div class="sub">最新 5 条执行情况</div>
+                        <div id="recentRecords" class="muted small">加载中...</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ============ 2. 灌溉管理 ============ -->
+        <section class="view" id="view-irrigation">
+            <div class="card-box">
+                <h5>选择地块</h5>
+                <div class="sub">手动模式下将灌溉指令直接下发到所选地块</div>
+                <div class="plot-list" id="irrigationPlotList"></div>
+            </div>
+
+            <div class="row-2">
+                <div class="card-box">
+                    <div class="flex-between mb-2">
+                        <div>
+                            <h5><i class="fas fa-hand-pointer me-1"></i>手动灌溉</h5>
+                            <div class="sub mb-0">直接下发灌溉指令，立即开始执行</div>
+                        </div>
+                    </div>
+                    <div class="notice notice-info" id="manualNotice"></div>
+                    <div class="form-grid">
+                        <div class="field">
+                            <label for="mWater">灌溉水量（m³）</label>
+                            <input type="number" id="mWater" min="0.5" step="0.5" value="10">
+                            <div class="tip">系统按缺水程度给出的建议值见下方决策结果</div>
+                        </div>
+                        <div class="field">
+                            <label for="mDuration">灌溉时长</label>
+                            <select id="mDuration"></select>
+                        </div>
+                        <div class="field">
+                            <label for="mRecipe">水肥配比（可选）</label>
+                            <select id="mRecipe">
+                                <option value="">不施肥，仅灌溉清水</option>
+                            </select>
+                            <div class="tip">选择后由水肥一体机按配比随水施肥</div>
+                        </div>
+                        <div class="field">
+                            <label for="mRemark">备注</label>
+                            <input type="text" id="mRemark" placeholder="例如：午后补灌">
+                        </div>
+                    </div>
+                    <div class="btn-row mt-3">
+                        <button class="btn btn-primary" id="manualBtn" onclick="Farmer.manualIrrigate()">
+                            <i class="fas fa-play me-1"></i>下发灌溉指令
+                        </button>
+                        <button class="btn btn-outline" onclick="Farmer.checkDecision()">
+                            <i class="fas fa-calculator me-1"></i>生成决策建议
+                        </button>
+                    </div>
+                    <div id="decisionBox"></div>
+                </div>
+
+                <div class="card-box">
+                    <h5><i class="fas fa-robot me-1"></i>自动灌溉</h5>
+                    <div class="sub">开启后系统按策略与实时数据自动执行</div>
+
+                    <div class="flex-between mb-3">
+                        <label class="switch">
+                            <input type="checkbox" id="autoSwitch" onchange="Farmer.toggleAuto(this)">
+                            <span class="track"></span>
+                            <span id="autoSwitchText">手动模式</span>
+                        </label>
+                    </div>
+
+                    <div id="autoStatusBox" class="muted small">请先选择地块</div>
+                    <button class="btn btn-outline btn-sm mt-3" onclick="Farmer.loadAutoStatus()">
+                        <i class="fas fa-rotate me-1"></i>刷新状态
+                    </button>
+                </div>
+            </div>
+
+            <div class="card-box">
+                <h5>灌溉执行记录</h5>
+                <div class="sub">手动下发与自动触发的全部记录</div>
+                <div class="table-wrap">
+                    <table class="data-table">
+                        <thead>
+                        <tr>
+                            <th>时间</th>
+                            <th>地块</th>
+                            <th>触发方式</th>
+                            <th>水量(m³)</th>
+                            <th>时长(分钟)</th>
+                            <th>水肥方案</th>
+                            <th>状态</th>
+                            <th>备注</th>
+                            <th>操作</th>
+                        </tr>
+                        </thead>
+                        <tbody id="recordTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- ============ 3. 告警消息 ============ -->
+        <section class="view" id="view-alarms">
+            <div class="notice notice-info">
+                <i class="fas fa-circle-info" style="margin-top:2px"></i>
+                <div>
+                    <b>高等级</b>故障与异常会推送通知（浏览器桌面通知 + 铃铛提醒），需尽快排查；
+                    <b>普通</b>数据异常不推送，仅在此页面记录，可定期查看。
+                </div>
+            </div>
+
+            <div class="card-box">
+                <div class="flex-between mb-2">
+                    <div>
+                        <h5>告警记录</h5>
+                        <div class="sub mb-0" id="alarmSummary">--</div>
+                    </div>
+                    <div class="btn-row">
+                        <select class="form-select" id="alarmLevelFilter" style="width:auto" onchange="Farmer.loadAlarms()">
+                            <option value="">全部等级</option>
+                            <option value="HIGH">仅高等级（已推送）</option>
+                            <option value="MEDIUM">仅中等级</option>
+                            <option value="LOW">仅普通（仅记录）</option>
+                        </select>
+                        <select class="form-select" id="alarmStatusFilter" style="width:auto" onchange="Farmer.loadAlarms()">
+                            <option value="">全部状态</option>
+                            <option value="PENDING">待处理</option>
+                            <option value="PROCESSING">处理中</option>
+                            <option value="RESOLVED">已解决</option>
+                        </select>
+                        <button class="btn btn-outline btn-sm" onclick="Farmer.loadAlarms()">
+                            <i class="fas fa-rotate me-1"></i>刷新
+                        </button>
+                    </div>
+                </div>
+                <div id="alarmList"></div>
+            </div>
+
+            <!-- 故障排查指引 -->
+            <div class="card-box">
+                <h5><i class="fas fa-screwdriver-wrench me-1"></i>故障排查指引</h5>
+                <div class="sub">收到高等级告警时的推荐处理顺序</div>
+                <div class="table-wrap">
+                    <table class="data-table">
+                        <thead>
+                        <tr>
+                            <th>告警类型</th>
+                            <th>可能原因</th>
+                            <th>建议排查步骤</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr>
+                            <td><span class="badge-soft bg-soft-danger">设备离线</span></td>
+                            <td>供电中断、网关断网、设备损坏</td>
+                            <td>① 检查设备电源与指示灯 ② 检查网关网络 ③ 重启设备后观察是否恢复心跳</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge-soft bg-soft-danger">传感器异常</span></td>
+                            <td>探头损坏、接线松动、未校准</td>
+                            <td>① 检查探头接线 ② 用标准液复核读数 ③ 必要时更换探头并重新校准</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge-soft bg-soft-danger">土壤干旱</span></td>
+                            <td>长时间未灌溉、滴灌堵塞、阀门前端断水</td>
+                            <td>① 确认灌溉阀门是否正常开启 ② 检查滴灌带是否堵塞 ③ 必要时手动补灌</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge-soft bg-soft-danger">灌溉失败</span></td>
+                            <td>阀门故障、水压不足、管路破损</td>
+                            <td>① 查看阀门设备状态 ② 检查水压 ③ 巡查管路是否有破损漏水</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge-soft bg-soft-gray">普通数据异常</span></td>
+                            <td>短时环境波动</td>
+                            <td>仅作记录，如持续出现再按上述步骤排查；无需立即处理</td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- ============ 4. 我的设备 ============ -->
+        <section class="view" id="view-devices">
+            <div class="card-box">
+                <div class="flex-between mb-2">
+                    <div>
+                        <h5>我的设备</h5>
+                        <div class="sub mb-0" id="deviceSummary">--</div>
+                    </div>
+                    <button class="btn btn-outline btn-sm" onclick="Farmer.loadDevices()">
+                        <i class="fas fa-rotate me-1"></i>刷新状态
+                    </button>
+                </div>
+                <div class="plot-list" id="deviceList"></div>
+            </div>
+        </section>
+
+        <!-- ============ 5. 历史统计 ============ -->
+        <section class="view" id="view-stats">
+            <div class="card-box">
+                <div class="flex-between">
+                    <div>
+                        <h5>历史统计</h5>
+                        <div class="sub mb-0">灌溉用水与环境数据的历史汇总</div>
+                    </div>
+                    <div class="btn-row">
+                        <select class="form-select" id="statsPlot" style="width:auto" onchange="Farmer.loadStats()"></select>
+                        <select class="form-select" id="statsDays" style="width:auto" onchange="Farmer.loadStats()">
+                            <option value="7">近 7 天</option>
+                            <option value="30" selected>近 30 天</option>
+                            <option value="90">近 90 天</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="stat-grid" id="statsCards"></div>
+
+            <div class="card-box">
+                <h5>每日灌溉用水量</h5>
+                <div class="sub">按天汇总的灌溉次数与用水量</div>
+                <div class="chart-box"><canvas id="waterChart"></canvas></div>
+            </div>
+
+            <div class="card-box">
+                <h5>每日环境均值</h5>
+                <div class="sub">土壤湿度与温度的日均变化（需先选择具体地块）</div>
+                <div class="chart-box"><canvas id="envChart"></canvas></div>
+            </div>
+
+            <div class="card-box">
+                <h5>灌溉决策记录</h5>
+                <div class="sub">系统给出的决策建议与置信度</div>
+                <div class="table-wrap">
+                    <table class="data-table">
+                        <thead>
+                        <tr>
+                            <th>决策时间</th>
+                            <th>触发方式</th>
+                            <th>决策结果</th>
+                            <th>建议水量(m³)</th>
+                            <th>实际水量(m³)</th>
+                            <th>置信度</th>
+                            <th>依据</th>
+                        </tr>
+                        </thead>
+                        <tbody id="decisionTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- ============ 6. 水肥配比 ============ -->
+        <section class="view" id="view-fertilizer">
+            <div class="notice notice-info">
+                <i class="fas fa-circle-info" style="margin-top:2px"></i>
+                <div>水肥配比方案由管理员在后台维护。灌溉时可选择携带配比，由水肥一体机按 N:P:K 比例随水施肥。</div>
+            </div>
+            <div class="card-box">
+                <h5>可用水肥配比方案</h5>
+                <div class="sub" id="fertilizerSummary">--</div>
+                <div class="table-wrap">
+                    <table class="data-table">
+                        <thead>
+                        <tr>
+                            <th>方案名称</th>
+                            <th>适用作物</th>
+                            <th>适用地块</th>
+                            <th>N : P : K</th>
+                            <th>目标EC(mS/cm)</th>
+                            <th>目标pH</th>
+                            <th>母液浓度(%)</th>
+                            <th>状态</th>
+                        </tr>
+                        </thead>
+                        <tbody id="fertilizerTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- ============ 7. 个人设置 ============ -->
+        <section class="view" id="view-profile">
+            <div class="row-2">
+                <div class="card-box">
+                    <h5>修改密码</h5>
+                    <div class="sub">修改成功后需要重新登录</div>
+                    <div class="form-grid">
+                        <div class="field">
+                            <label for="oldPassword">原密码</label>
+                            <input type="password" id="oldPassword" autocomplete="off">
+                        </div>
+                        <div class="field">
+                            <label for="newPassword">新密码</label>
+                            <input type="password" id="newPassword" autocomplete="off">
+                            <div class="tip">长度不少于 4 位</div>
+                        </div>
+                    </div>
+                    <button class="btn btn-primary mt-3" onclick="Farmer.changePassword()">
+                        <i class="fas fa-key me-1"></i>确认修改
+                    </button>
+                </div>
+
+                <div class="card-box">
+                    <h5>联系方式</h5>
+                    <div class="sub">用于接收高等级告警时的联系</div>
+                    <div class="field">
+                        <label for="phone">手机号</label>
+                        <input type="text" id="phone" maxlength="20">
+                    </div>
+                    <button class="btn btn-outline mt-3" onclick="Farmer.saveProfile()">
+                        <i class="fas fa-floppy-disk me-1"></i>保存
+                    </button>
+                </div>
+            </div>
+        </section>
+
+    </main>
+</div>
+
+<script src="js/common.js"></script>
+<script src="js/farmer.js"></script>
+</body>
+</html>

@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>管理员后台 - 智慧农业精准灌溉系统</title>
+    <link href="https://cdn.bootcdn.net/ajax/libs/bootstrap/5.1.3/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="css/app.css">
+    <script src="https://cdn.bootcdn.net/ajax/libs/Chart.js/3.7.0/chart.min.js"></script>
+</head>
+<body>
+
+<!-- ============ 侧边栏 ============ -->
+<aside class="sidebar">
+    <div class="sidebar-header">
+        <h4><i class="fas fa-shield-halved"></i> <span>管理员后台</span></h4>
+        <p>智慧农业精准灌溉系统</p>
+    </div>
+
+    <nav class="sidebar-nav">
+        <a class="nav-item active" data-view="overview">
+            <i class="fas fa-chart-pie"></i><span>全局看板</span>
+        </a>
+        <a class="nav-item" data-view="devices">
+            <i class="fas fa-microchip"></i><span>设备管理</span>
+        </a>
+        <a class="nav-item" data-view="strategies">
+            <i class="fas fa-sliders"></i><span>灌溉策略</span>
+        </a>
+        <a class="nav-item" data-view="rules">
+            <i class="fas fa-bell-concierge"></i><span>告警阈值</span>
+        </a>
+        <a class="nav-item" data-view="alarms">
+            <i class="fas fa-triangle-exclamation"></i><span>告警记录</span>
+            <span class="nav-badge hidden" id="navAlarmBadge">0</span>
+        </a>
+        <a class="nav-item" data-view="accounts">
+            <i class="fas fa-users-gear"></i><span>农户账号</span>
+        </a>
+        <a class="nav-item" data-view="plots">
+            <i class="fas fa-map-location-dot"></i><span>地块总览</span>
+        </a>
+        <a class="nav-item" data-view="fertilizer">
+            <i class="fas fa-flask"></i><span>水肥配比</span>
+        </a>
+        <a class="nav-item" data-view="report">
+            <i class="fas fa-file-arrow-down"></i><span>报表导出</span>
+        </a>
+    </nav>
+
+    <div class="sidebar-footer">
+        <div class="d-flex align-items-center gap-2">
+            <i class="fas fa-circle-user fa-2x"></i>
+            <div class="txt">
+                <div class="user-name" id="sideUserName">--</div>
+                <div class="user-role">系统管理员</div>
+            </div>
+        </div>
+        <button class="btn btn-outline btn-sm w-100 mt-2" onclick="App.logout()">
+            <i class="fas fa-right-from-bracket me-1"></i>退出登录
+        </button>
+    </div>
+</aside>
+
+<!-- ============ 主区域 ============ -->
+<div class="main">
+    <header class="topbar">
+        <h3 id="pageTitle">全局看板</h3>
+        <div class="topbar-right">
+            <div class="bell" id="bellBtn" title="高等级告警">
+                <i class="fas fa-bell"></i>
+                <span class="bell-dot hidden" id="bellDot">0</span>
+            </div>
+            <span class="muted small" id="clock">--</span>
+            <span class="muted small"><i class="fas fa-user-shield me-1"></i><span id="topUserName">--</span></span>
+        </div>
+    </header>
+
+    <main class="content">
+
+        <!-- ============ 1. 全局看板 ============ -->
+        <section class="view active" id="view-overview">
+            <div class="notice notice-info">
+                <i class="fas fa-circle-info" style="margin-top:2px"></i>
+                <div>查看全部地块的汇总数据与设备运行状况。设备离线、传感器故障等高等级异常会推送通知，
+                    需及时在「告警记录」中处理。</div>
+            </div>
+
+            <div class="stat-grid" id="overviewCards"></div>
+
+            <div class="row-2">
+                <div class="card-box">
+                    <div class="flex-between mb-2">
+                        <div>
+                            <h5>地块汇总</h5>
+                            <div class="sub mb-0">全部地块的实时监测与设备状态</div>
+                        </div>
+                        <button class="btn btn-outline btn-sm" onclick="Admin.loadOverview()">
+                            <i class="fas fa-rotate me-1"></i>刷新
+                        </button>
+                    </div>
+                    <div class="table-wrap">
+                        <table class="data-table">
+                            <thead>
+                            <tr>
+                                <th>地块</th>
+                                <th>所属农户</th>
+                                <th>作物</th>
+                                <th>模式</th>
+                                <th>湿度</th>
+                                <th>温度</th>
+                                <th>设备(在线)</th>
+                                <th>待处理告警</th>
+                                <th>数据状态</th>
+                            </tr>
+                            </thead>
+                            <tbody id="overviewTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="card-box">
+                        <h5>设备状态分布</h5>
+                        <div class="chart-box short"><canvas id="deviceChart"></canvas></div>
+                    </div>
+                    <div class="card-box">
+                        <h5>告警等级分布</h5>
+                        <div class="sub mb-2">近 30 天</div>
+                        <div id="alarmStatBox" class="muted small">加载中...</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row-2">
+                <div class="card-box">
+                    <h5>近 7 天灌溉用水趋势</h5>
+                    <div class="sub">全部地块汇总</div>
+                    <div class="chart-box"><canvas id="overviewWaterChart"></canvas></div>
+                </div>
+                <div class="card-box">
+                    <h5>最近灌溉记录</h5>
+                    <div class="sub">最新 8 条</div>
+                    <div id="recentRecords" class="muted small">加载中...</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ============ 2. 设备管理 ============ -->
+        <section class="view" id="view-devices">
+            <div class="card-box">
+                <div class="flex-between mb-2">
+                    <div>
+                        <h5>物联网设备管理</h5>
+                        <div class="sub mb-0" id="deviceSummary">--</div>
+                    </div>
+                    <div class="btn-row">
+                        <button class="btn btn-primary btn-sm" onclick="Admin.openDeviceModal()">
+                            <i class="fas fa-plus me-1"></i>新增设备
+                        </button>
+                        <button class="btn btn-outline btn-sm" onclick="Admin.loadDevices()">
+                            <i class="fas fa-rotate me-1"></i>刷新
+                        </button>
+                    </div>
+                </div>
+
+                <div class="form-grid mb-2">
+                    <div class="field">
+                        <label>设备类型</label>
+                        <select id="filterType" onchange="Admin.loadDevices()">
+                            <option value="">全部类型</option>
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label>设备状态</label>
+                        <select id="filterStatus" onchange="Admin.loadDevices()">
+                            <option value="">全部状态</option>
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label>所属地块</label>
+                        <select id="filterFarmland" onchange="Admin.loadDevices()">
+                            <option value="">全部地块</option>
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label>关键字</label>
+                        <input type="text" id="filterKeyword" placeholder="设备编号或名称"
+                               onkeydown="if(event.key==='Enter')Admin.loadDevices()">
+                    </div>
+                </div>
+
+                <!-- 批量操作区（P2 多设备批量管理） -->
+                <div class="notice notice-info">
+                    <i class="fas fa-layer-group" style="margin-top:2px"></i>
+                    <div style="flex:1">
+                        <b>批量操作</b>：勾选下方设备后可批量绑定 / 解绑地块、批量修改状态。
+                        已选 <b id="selectedCount">0</b> 台。
+                        <div class="btn-row mt-2">
+                            <select class="form-select" id="batchFarmland" style="width:auto"></select>
+                            <button class="btn btn-outline btn-sm" onclick="Admin.batchBind()">
+                                <i class="fas fa-link me-1"></i>批量绑定
+                            </button>
+                            <button class="btn btn-outline btn-sm" onclick="Admin.batchUnbind()">
+                                <i class="fas fa-link-slash me-1"></i>批量解绑
+                            </button>
+                            <select class="form-select" id="batchStatus" style="width:auto"></select>
+                            <button class="btn btn-outline btn-sm" onclick="Admin.batchStatus()">
+                                <i class="fas fa-screwdriver-wrench me-1"></i>批量改状态
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="table-wrap">
+                    <table class="data-table">
+                        <thead>
+                        <tr>
+                            <th style="width:36px"><input type="checkbox" id="checkAll" onchange="Admin.toggleAll(this)"></th>
+                            <th>设备编号</th>
+                            <th>设备名称</th>
+                            <th>类型</th>
+                            <th>绑定地块</th>
+                            <th>安装位置</th>
+                            <th>状态</th>
+                            <th>最后心跳</th>
+                            <th>操作</th>
+                        </tr>
+                        </thead>
+                        <tbody id="deviceTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- ============ 3. 灌溉策略 ============ -->
+        <section class="view" id="view-strategies">
+            <div class="card-box">
+                <div class="flex-between mb-2">
+                    <div>
+                        <h5>灌溉策略配置</h5>
+                        <div class="sub mb-0">全局策略对所有未单独配置的地块生效；也可为单个地块配置专属策略</div>
+                    </div>
+                    <button class="btn btn-primary btn-sm" onclick="Admin.openStrategyModal()">
+                        <i class="fas fa-plus me-1"></i>新增策略
+                    </button>
+                </div>
+                <div class="table-wrap">
+                    <table class="data-table">
+                        <thead>
+                        <tr>
+                            <th>策略名称</th>
+                            <th>作用范围</th>
+                            <th>湿度下限</th>
+                            <th>目标湿度</th>
+                            <th>温度上限</th>
+                            <th>光照上限</th>
+                            <th>单次水量</th>
+                            <th>时长</th>
+                            <th>允许时段</th>
+                            <th>状态</th>
+                            <th>操作</th>
+                        </tr>
+                        </thead>
+                        <tbody id="strategyTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="card-box">
+                <h5>地块策略绑定</h5>
+                <div class="sub">为地块指定专属策略，留空表示使用全局策略</div>
+                <div class="table-wrap">
+                    <table class="data-table">
+                        <thead>
+                        <tr>
+                            <th>地块</th>
+                            <th>所属农户</th>
+                            <th>当前灌溉模式</th>
+                            <th>当前生效策略</th>
+                            <th>调整为</th>
+                        </tr>
+                        </thead>
+                        <tbody id="plotStrategyTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- ============ 4. 告警阈值 ============ -->
+        <section class="view" id="view-rules">
+            <div class="notice notice-warn">
+                <i class="fas fa-triangle-exclamation" style="margin-top:2px"></i>
+                <div><b>推送规则</b>：只有<b>高等级（HIGH）</b>告警会推送通知（浏览器桌面通知 + 铃铛提醒）；
+                    中、低等级告警仅在页面留痕，不推送。因此系统禁止把非高等级规则设置为"推送"。</div>
+            </div>
+
+            <div class="card-box">
+                <div class="flex-between mb-2">
+                    <div>
+                        <h5>告警阈值规则</h5>
+                        <div class="sub mb-0">系统按这些规则实时评估采集数据与设备心跳</div>
+                    </div>
+                    <div class="btn-row">
+                        <button class="btn btn-primary btn-sm" onclick="Admin.openRuleModal()">
+                            <i class="fas fa-plus me-1"></i>新增规则
+                        </button>
+                        <button class="btn btn-outline btn-sm" onclick="Admin.loadRules()">
+                            <i class="fas fa-rotate me-1"></i>刷新
+                        </button>
+                    </div>
+                </div>
+                <div class="table-wrap">
+                    <table class="data-table">
+                        <thead>
+                        <tr>
+                            <th>规则名称</th>
+                            <th>监测指标</th>
+                            <th>触发条件</th>
+                            <th>告警等级</th>
+                            <th>是否推送</th>
+                            <th>作用范围</th>
+                            <th>状态</th>
+                            <th>说明</th>
+                            <th>操作</th>
+                        </tr>
+                        </thead>
+                        <tbody id="ruleTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- ============ 5. 告警记录 ============ -->
+        <section class="view" id="view-alarms">
+            <div class="card-box">
+                <div class="flex-between mb-2">
+                    <div>
+                        <h5>系统告警记录</h5>
+                        <div class="sub mb-0" id="alarmSummary">--</div>
+                    </div>
+                    <div class="btn-row">
+                        <select class="form-select" id="aLevel" style="width:auto" onchange="Admin.loadAlarms()">
+                            <option value="">全部等级</option>
+                            <option value="HIGH">高等级</option>
+                            <option value="MEDIUM">中等级</option>
+                            <option value="LOW">低等级（仅记录）</option>
+                        </select>
+                        <select class="form-select" id="aStatus" style="width:auto" onchange="Admin.loadAlarms()">
+                            <option value="">全部状态</option>
+                            <option value="PENDING">待处理</option>
+                            <option value="PROCESSING">处理中</option>
+                            <option value="RESOLVED">已解决</option>
+                        </select>
+                        <select class="form-select" id="aType" style="width:auto" onchange="Admin.loadAlarms()">
+                            <option value="">全部类型</option>
+                            <option value="DEVICE_OFFLINE">设备离线</option>
+                            <option value="SENSOR_ABNORMAL">传感器异常</option>
+                            <option value="SOIL_DRY">土壤干旱</option>
+                            <option value="TEMP_HIGH">温度过高</option>
+                            <option value="LIGHT_ABNORMAL">光照异常</option>
+                            <option value="IRRIGATION_FAIL">灌溉失败</option>
+                        </select>
+                        <button class="btn btn-outline btn-sm" onclick="Admin.loadAlarms()">
+                            <i class="fas fa-rotate me-1"></i>刷新
+                        </button>
+                    </div>
+                </div>
+
+                <div class="notice notice-info">
+                    <i class="fas fa-list-check" style="margin-top:2px"></i>
+                    <div style="flex:1">
+                        已选 <b id="selectedAlarmCount">0</b> 条告警
+                        <div class="btn-row mt-2">
+                            <button class="btn btn-outline btn-sm" onclick="Admin.batchHandleAlarm('PROCESSING')">
+                                <i class="fas fa-spinner me-1"></i>批量标记处理中
+                            </button>
+                            <button class="btn btn-primary btn-sm" onclick="Admin.batchHandleAlarm('RESOLVED')">
+                                <i class="fas fa-check me-1"></i>批量标记已解决
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="alarmList"></div>
+            </div>
+        </section>
+
+        <!-- ============ 6. 农户账号 ============ -->
+        <section class="view" id="view-accounts">
+            <div class="card-box">
+                <div class="flex-between mb-2">
+                    <div>
+                        <h5>账号与权限管理</h5>
+                        <div class="sub mb-0">管理农户账号；被禁用的账号将无法登录系统</div>
+                    </div>
+                    <button class="btn btn-primary btn-sm" onclick="Admin.openAccountModal()">
+                        <i class="fas fa-user-plus me-1"></i>新增账号
+                    </button>
+                </div>
+                <div class="table-wrap">
+                    <table class="data-table">
+                        <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>用户名</th>
+                            <th>角色</th>
+                            <th>手机号</th>
+                            <th>名下地块</th>
+                            <th>状态</th>
+                            <th>创建时间</th>
+                            <th>操作</th>
+                        </tr>
+                        </thead>
+                        <tbody id="accountTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- ============ 7. 地块总览 ============ -->
+        <section class="view" id="view-plots">
+            <div class="card-box">
+                <div class="flex-between mb-2">
+                    <div>
+                        <h5>全部地块</h5>
+                        <div class="sub mb-0">地块基本信息、归属与运行状态</div>
+                    </div>
+                    <button class="btn btn-outline btn-sm" onclick="Admin.loadPlots()">
+                        <i class="fas fa-rotate me-1"></i>刷新
+                    </button>
+                </div>
+                <div class="table-wrap">
+                    <table class="data-table">
+                        <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>地块名称</th>
+                            <th>所属农户</th>
+                            <th>位置</th>
+                            <th>面积(亩)</th>
+                            <th>作物类型</th>
+                            <th>灌溉模式</th>
+                            <th>设备数</th>
+                            <th>在线设备</th>
+                            <th>待处理告警</th>
+                        </tr>
+                        </thead>
+                        <tbody id="plotTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- ============ 8. 水肥配比 ============ -->
+        <section class="view" id="view-fertilizer">
+            <div class="card-box">
+                <div class="flex-between mb-2">
+                    <div>
+                        <h5>水肥配比方案</h5>
+                        <div class="sub mb-0">农户灌溉时可选择携带配比，由水肥一体机按比例施肥</div>
+                    </div>
+                    <button class="btn btn-primary btn-sm" onclick="Admin.openFertilizerModal()">
+                        <i class="fas fa-plus me-1"></i>新增方案
+                    </button>
+                </div>
+                <div class="table-wrap">
+                    <table class="data-table">
+                        <thead>
+                        <tr>
+                            <th>方案名称</th>
+                            <th>适用作物</th>
+                            <th>适用地块</th>
+                            <th>N : P : K</th>
+                            <th>目标EC</th>
+                            <th>目标pH</th>
+                            <th>母液浓度</th>
+                            <th>状态</th>
+                            <th>操作</th>
+                        </tr>
+                        </thead>
+                        <tbody id="fertilizerTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- ============ 9. 报表导出 ============ -->
+        <section class="view" id="view-report">
+            <div class="row-2">
+                <div class="card-box">
+                    <h5><i class="fas fa-file-csv me-1"></i>统计报表导出</h5>
+                    <div class="sub">导出为 CSV 文件（含 UTF-8 BOM，Excel 可直接打开）</div>
+                    <div class="form-grid">
+                        <div class="field">
+                            <label for="rType">报表类型</label>
+                            <select id="rType">
+                                <option value="summary">地块汇总统计</option>
+                                <option value="alarm">告警记录</option>
+                                <option value="irrigation">灌溉记录</option>
+                                <option value="sensor">监测数据</option>
+                            </select>
+                        </div>
+                        <div class="field">
+                            <label for="rDays">统计范围</label>
+                            <select id="rDays">
+                                <option value="7">近 7 天</option>
+                                <option value="30" selected>近 30 天</option>
+                                <option value="90">近 90 天</option>
+                                <option value="365">近一年</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button class="btn btn-primary mt-3" onclick="Admin.exportReport()">
+                        <i class="fas fa-download me-1"></i>导出报表
+                    </button>
+                </div>
+
+                <div class="card-box">
+                    <h5>数据维护</h5>
+                    <div class="sub">清理过期的历史监测数据，释放存储空间</div>
+                    <div class="field">
+                        <label for="keepDays">保留最近多少天</label>
+                        <input type="number" id="keepDays" value="90" min="7" max="3650">
+                    </div>
+                    <button class="btn btn-danger-outline mt-3" onclick="Admin.cleanup()">
+                        <i class="fas fa-broom me-1"></i>清理历史数据
+                    </button>
+                    <div class="notice notice-warn mt-3 mb-0">
+                        <i class="fas fa-triangle-exclamation"></i>
+                        <div>清理操作不可恢复，请确认已导出所需报表后再执行。</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card-box">
+                <h5>立即执行自动灌溉巡检</h5>
+                <div class="sub">手动触发一轮巡检，便于验证策略是否按预期生效（正常情况下由后台任务每分钟自动执行）</div>
+                <button class="btn btn-outline" onclick="Admin.scanNow()">
+                    <i class="fas fa-play me-1"></i>执行一次巡检
+                </button>
+            </div>
+        </section>
+
+    </main>
+</div>
+
+<!-- ============ 设备编辑模态框 ============ -->
+<div class="modal-mask" id="deviceModal">
+    <div class="modal-panel">
+        <div class="modal-head">
+            <h5 id="deviceModalTitle">新增设备</h5>
+            <button class="close-x" onclick="App.closeModal('deviceModal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="dId">
+            <div class="form-grid">
+                <div class="field">
+                    <label for="dCode">设备编号 *</label>
+                    <input type="text" id="dCode" placeholder="例如 SM-005">
+                    <div class="tip">编号在系统内唯一，用于设备上报数据时识别</div>
+                </div>
+                <div class="field">
+                    <label for="dName">设备名称 *</label>
+                    <input type="text" id="dName" placeholder="例如 土壤湿度传感器#5">
+                </div>
+                <div class="field">
+                    <label for="dType">设备类型 *</label>
+                    <select id="dType"></select>
+                </div>
+                <div class="field">
+                    <label for="dFarmland">绑定地块</label>
+                    <select id="dFarmland">
+                        <option value="">暂不绑定（存入仓库）</option>
+                    </select>
+                </div>
+                <div class="field">
+                    <label for="dLocation">安装位置</label>
+                    <input type="text" id="dLocation" placeholder="例如 玉米田1号-中央">
+                </div>
+                <div class="field">
+                    <label for="dFirmware">固件版本</label>
+                    <input type="text" id="dFirmware" placeholder="例如 v1.2.0">
+                </div>
+            </div>
+            <div class="field mt-2">
+                <label for="dRemark">备注</label>
+                <input type="text" id="dRemark" placeholder="选填">
+            </div>
+        </div>
+        <div class="modal-foot">
+            <button class="btn btn-outline" onclick="App.closeModal('deviceModal')">取消</button>
+            <button class="btn btn-primary" onclick="Admin.saveDevice()">保存</button>
+        </div>
+    </div>
+</div>
+
+<!-- ============ 策略编辑模态框 ============ -->
+<div class="modal-mask" id="strategyModal">
+    <div class="modal-panel">
+        <div class="modal-head">
+            <h5 id="strategyModalTitle">新增灌溉策略</h5>
+            <button class="close-x" onclick="App.closeModal('strategyModal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="sId">
+            <div class="form-grid">
+                <div class="field">
+                    <label for="sName">策略名称 *</label>
+                    <input type="text" id="sName" placeholder="例如 全局默认策略">
+                </div>
+                <div class="field">
+                    <label for="sScope">作用范围 *</label>
+                    <select id="sScope" onchange="Admin.onScopeChange()">
+                        <option value="global">全局策略（对所有未单独配置的地块生效）</option>
+                        <option value="plot">指定地块专属策略</option>
+                    </select>
+                </div>
+                <div class="field" id="sFarmlandField" style="display:none">
+                    <label for="sFarmland">选择地块 *</label>
+                    <select id="sFarmland"></select>
+                </div>
+                <div class="field">
+                    <label for="sHumidityMin">触发湿度下限(%) *</label>
+                    <input type="number" id="sHumidityMin" step="0.5" value="40">
+                    <div class="tip">土壤湿度低于该值且满足其他条件时触发灌溉</div>
+                </div>
+                <div class="field">
+                    <label for="sTarget">目标湿度(%) *</label>
+                    <input type="number" id="sTarget" step="0.5" value="65">
+                    <div class="tip">必须大于湿度下限，灌溉后湿度回升的期望值</div>
+                </div>
+                <div class="field">
+                    <label for="sTempMax">温度上限(℃)</label>
+                    <input type="number" id="sTempMax" step="0.5" value="38">
+                    <div class="tip">高于该温度不自动灌溉，避免高温浇水伤根</div>
+                </div>
+                <div class="field">
+                    <label for="sLightMax">光照上限(lux)</label>
+                    <input type="number" id="sLightMax" step="1000" value="60000">
+                    <div class="tip">高于该光照不自动灌溉，减少蒸发损失</div>
+                </div>
+                <div class="field">
+                    <label for="sWater">单次灌溉量(m³) *</label>
+                    <input type="number" id="sWater" step="0.5" value="15">
+                    <div class="tip">实际用水量会按缺水程度在 0.6~1.6 倍间浮动</div>
+                </div>
+                <div class="field">
+                    <label for="sDuration">单次灌溉时长(分钟) *</label>
+                    <input type="number" id="sDuration" step="1" value="10">
+                </div>
+                <div class="field">
+                    <label for="sStart">允许灌溉起始时间 *</label>
+                    <input type="text" id="sStart" value="06:00" placeholder="HH:mm">
+                </div>
+                <div class="field">
+                    <label for="sEnd">允许灌溉结束时间 *</label>
+                    <input type="text" id="sEnd" value="20:00" placeholder="HH:mm">
+                </div>
+                <div class="field">
+                    <label for="sEnabled">状态</label>
+                    <select id="sEnabled">
+                        <option value="1">启用</option>
+                        <option value="0">停用</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+        <div class="modal-foot">
+            <button class="btn btn-outline" onclick="App.closeModal('strategyModal')">取消</button>
+            <button class="btn btn-primary" onclick="Admin.saveStrategy()">保存</button>
+        </div>
+    </div>
+</div>
+
+<!-- ============ 阈值规则模态框 ============ -->
+<div class="modal-mask" id="ruleModal">
+    <div class="modal-panel">
+        <div class="modal-head">
+            <h5 id="ruleModalTitle">新增告警阈值规则</h5>
+            <button class="close-x" onclick="App.closeModal('ruleModal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="rId">
+            <div class="form-grid">
+                <div class="field">
+                    <label for="rlName">规则名称 *</label>
+                    <input type="text" id="rlName" placeholder="例如 土壤湿度严重不足">
+                </div>
+                <div class="field">
+                    <label for="rlMetric">监测指标 *</label>
+                    <select id="rlMetric" onchange="Admin.onMetricChange()"></select>
+                </div>
+                <div class="field">
+                    <label for="rlOp">比较方式 *</label>
+                    <select id="rlOp">
+                        <option value="LT">小于（低于阈值时告警）</option>
+                        <option value="GT">大于（高于阈值时告警）</option>
+                    </select>
+                </div>
+                <div class="field">
+                    <label for="rlThreshold">阈值 *</label>
+                    <input type="number" id="rlThreshold" step="0.1" value="30">
+                    <div class="tip" id="rlUnitTip">单位：%</div>
+                </div>
+                <div class="field">
+                    <label for="rlLevel">告警等级 *</label>
+                    <select id="rlLevel" onchange="Admin.onLevelChange()">
+                        <option value="HIGH">高等级（故障/严重异常，可推送）</option>
+                        <option value="MEDIUM">中等级（仅页面记录）</option>
+                        <option value="LOW">低等级（仅页面记录）</option>
+                    </select>
+                </div>
+                <div class="field">
+                    <label for="rlPush">推送通知</label>
+                    <select id="rlPush">
+                        <option value="0">不推送，仅页面记录</option>
+                        <option value="1">推送通知（仅高等级可用）</option>
+                    </select>
+                    <div class="tip" id="rlPushTip">只有高等级告警支持推送</div>
+                </div>
+            </div>
+            <div class="field mt-2">
+                <label for="rlDesc">规则说明</label>
+                <input type="text" id="rlDesc" placeholder="选填，会显示在告警详情中">
+            </div>
+        </div>
+        <div class="modal-foot">
+            <button class="btn btn-outline" onclick="App.closeModal('ruleModal')">取消</button>
+            <button class="btn btn-primary" onclick="Admin.saveRule()">保存</button>
+        </div>
+    </div>
+</div>
+
+<!-- ============ 账号编辑模态框 ============ -->
+<div class="modal-mask" id="accountModal">
+    <div class="modal-panel">
+        <div class="modal-head">
+            <h5 id="accountModalTitle">新增账号</h5>
+            <button class="close-x" onclick="App.closeModal('accountModal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="acId">
+            <div class="form-grid">
+                <div class="field">
+                    <label for="acUsername">用户名 *</label>
+                    <input type="text" id="acUsername" placeholder="登录用户名">
+                </div>
+                <div class="field">
+                    <label for="acPassword">初始密码</label>
+                    <input type="text" id="acPassword" placeholder="留空则默认为 123456">
+                    <div class="tip">仅新增时生效，修改账号时请在列表中重置密码</div>
+                </div>
+                <div class="field">
+                    <label for="acRole">角色 *</label>
+                    <select id="acRole">
+                        <option value="farmer">农户（农户操作端）</option>
+                        <option value="admin">管理员（管理后台）</option>
+                    </select>
+                </div>
+                <div class="field">
+                    <label for="acPhone">手机号</label>
+                    <input type="text" id="acPhone" maxlength="20">
+                </div>
+            </div>
+        </div>
+        <div class="modal-foot">
+            <button class="btn btn-outline" onclick="App.closeModal('accountModal')">取消</button>
+            <button class="btn btn-primary" onclick="Admin.saveAccount()">保存</button>
+        </div>
+    </div>
+</div>
+
+<!-- ============ 水肥配比模态框 ============ -->
+<div class="modal-mask" id="fertilizerModal">
+    <div class="modal-panel">
+        <div class="modal-head">
+            <h5 id="fertilizerModalTitle">新增水肥配比方案</h5>
+            <button class="close-x" onclick="App.closeModal('fertilizerModal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="fId">
+            <div class="form-grid">
+                <div class="field">
+                    <label for="fName">方案名称 *</label>
+                    <input type="text" id="fName" placeholder="例如 玉米拔节期水肥方案">
+                </div>
+                <div class="field">
+                    <label for="fCrop">适用作物</label>
+                    <input type="text" id="fCrop" placeholder="例如 玉米">
+                </div>
+                <div class="field">
+                    <label for="fFarmland">适用地块</label>
+                    <select id="fFarmland">
+                        <option value="">通用方案（所有地块可用）</option>
+                    </select>
+                </div>
+                <div class="field">
+                    <label for="fN">氮 N 比例 *</label>
+                    <input type="number" id="fN" step="0.1" value="3">
+                </div>
+                <div class="field">
+                    <label for="fP">磷 P 比例 *</label>
+                    <input type="number" id="fP" step="0.1" value="1">
+                </div>
+                <div class="field">
+                    <label for="fK">钾 K 比例 *</label>
+                    <input type="number" id="fK" step="0.1" value="2">
+                </div>
+                <div class="field">
+                    <label for="fEc">目标电导率 EC(mS/cm)</label>
+                    <input type="number" id="fEc" step="0.1" value="1.8">
+                </div>
+                <div class="field">
+                    <label for="fPh">目标 pH</label>
+                    <input type="number" id="fPh" step="0.1" value="6.2">
+                </div>
+                <div class="field">
+                    <label for="fConc">母液浓度(%)</label>
+                    <input type="number" id="fConc" step="0.01" value="0.2">
+                </div>
+                <div class="field">
+                    <label for="fEnabled">状态</label>
+                    <select id="fEnabled">
+                        <option value="1">启用</option>
+                        <option value="0">停用</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+        <div class="modal-foot">
+            <button class="btn btn-outline" onclick="App.closeModal('fertilizerModal')">取消</button>
+            <button class="btn btn-primary" onclick="Admin.saveFertilizer()">保存</button>
+        </div>
+    </div>
+</div>
+
+<script src="js/common.js"></script>
+<script src="js/admin.js"></script>
+</body>
+</html>
