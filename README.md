@@ -33,8 +33,15 @@ mvn spring-boot:run
 
 ### 切换到 MySQL
 
+数据库账号密码通过**环境变量**注入，不写在配置文件里。
+
+```powershell
+# 1. 设置环境变量（Windows PowerShell，设置后需重开终端）
+[Environment]::SetEnvironmentVariable('SMARTFARM_DB_USER',     'root',      'User')
+[Environment]::SetEnvironmentVariable('SMARTFARM_DB_PASSWORD', '你的密码',   'User')
+```
+
 ```bash
-# 1. 先按本机情况修改 src/main/resources/application-mysql.properties 中的账号密码
 # 2. 启动时指定 profile
 mvn spring-boot:run -Dspring-boot.run.profiles=mysql
 ```
@@ -42,6 +49,9 @@ mvn spring-boot:run -Dspring-boot.run.profiles=mysql
 MySQL 环境同样会在启动时自动执行 `src/main/resources/db/schema.sql` 建表
 （脚本使用 `CREATE TABLE IF NOT EXISTS`，可重复执行）。
 若数据库账号没有建表权限，可手动导入该脚本后把 `spring.sql.init.mode` 改为 `never`。
+
+连接信息默认是 `localhost:3306/smart_farm`，用户名为 `root`，
+需要改动可直接编辑 `application-mysql.properties` 中的 `spring.datasource.url`。
 
 ---
 
